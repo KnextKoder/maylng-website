@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button"
+import { Features } from "@/components/feature-section"
 import { useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
@@ -19,48 +20,66 @@ export default function Home() {
   const description = "email client and service for humans + ai.";
 
   const resetPage = () => {
-    // Reset text content
-    if (titleRef.current) {
-      titleRef.current.innerHTML = title;
-    }
-    if (descriptionRef.current) {
-      descriptionRef.current.innerHTML = description;
-    }
-
-    // Reset second component to hidden state
-    if (secondComponentRef.current) {
-      secondComponentRef.current.classList.remove('flex', 'flex-col', 'items-center', 'justify-center');
-      secondComponentRef.current.classList.add('hidden');
-      gsap.set(secondComponentRef.current, { opacity: 0 });
-    }
-
-    // Reset loading card and feature cards
-    gsap.set("#loading-card", { opacity: 1, scale: 1, zIndex: 20 });
-    
-    // Reset each card to its initial position behind loading card (all centered)
-    const cards = document.querySelectorAll(".feature-card");
-    if (cards.length >= 4) {
-      cards.forEach(card => {
-        gsap.set(card, { 
-          opacity: 0, 
-          left: "50%", 
-          top: "0%", 
-          marginLeft: "-12rem" 
-        });
-      });
-    }
-
-    // Scroll back to top smoothly
-    gsap.to(window, {
-      scrollTo: { y: 0 },
-      duration: 1,
-      ease: "power2.out",
+    const tl = gsap.timeline({
       onComplete: () => {
+        // After all animations, reset the innerHTML to remove spans
+        if (titleRef.current) {
+          titleRef.current.innerHTML = title;
+        }
+        if (descriptionRef.current) {
+          descriptionRef.current.innerHTML = description;
+        }
+        
+        // Reset state variables
         setIsAnimated(false);
         setShowReset(false);
         gsap.set("body", { overflow: "auto" });
       }
     });
+
+    // 1. Animate letters flying back up
+    tl.to(".letter", {
+      y: 0,
+      x: 0,
+      rotation: 0,
+      duration: 1.5,
+      ease: "power2.inOut",
+      stagger: {
+        amount: 0.8,
+        from: "random"
+      }
+    });
+
+    // 2. Scroll back to top at the same time
+    tl.to(window, {
+      scrollTo: { y: 0 },
+      duration: 1.5,
+      ease: "power2.inOut"
+    }, 0); // Start at time 0 of the timeline
+
+    // 3. Hide the second component while scrolling up
+    if (secondComponentRef.current) {
+      tl.to(secondComponentRef.current, {
+        opacity: 0,
+        duration: 0.5,
+        onComplete: () => {
+          secondComponentRef.current?.classList.remove('flex', 'flex-col', 'items-center', 'justify-center');
+          secondComponentRef.current?.classList.add('hidden');
+          
+          // Also reset the individual feature cards and loading card state here
+          gsap.set("#loading-card", { opacity: 1, scale: 1, zIndex: 20, display: "block" });
+          const cards = document.querySelectorAll(".feature-card");
+          cards.forEach((card, index) => {
+            gsap.set(card, { 
+              opacity: 0, 
+              x: 0, 
+              y: 0, // Reset to center position (behind loading card)
+              zIndex: 15 - index
+            });
+          });
+        }
+      }, 0);
+    }
   };
 
   const handleStartClick = () => {
@@ -95,35 +114,28 @@ export default function Home() {
     // Initially hide the second component
     gsap.set(secondComponentRef.current, { opacity: 0 });
 
-    // Animate letters falling down and disappearing mid-fall
+    // Animate letters falling down and settling in the bottom div area
     tl.to(".letter", {
-      y: window.innerHeight + 10, // Just 10px past first component
-      rotation: () => gsap.utils.random(-360, 360),
-      duration: () => gsap.utils.random(1.5, 3),
-      ease: "bounce.out",
+      y: window.innerHeight + 400, // Fall further down to settle in the bottom div area
+      x: () => gsap.utils.random(-100, 100), // Add horizontal drift
+      rotation: () => gsap.utils.random(-720, 720), // More rotation
+      duration: () => gsap.utils.random(2, 4), // Slightly longer duration
+      ease: "power2.out", // Smoother ease
       stagger: {
-        amount: 0.8,
+        amount: 0.5, // Tighter stagger
         from: "random"
       }
     });
 
-    // Hide letters mid-fall (start hiding much earlier)
-    tl.to(".letter", {
-      opacity: 0,
-      duration: 0.5,
-      ease: "power2.out",
-      stagger: {
-        amount: 0.3,
-        from: "random"
-      }
-    }, "-=2"); // Start hiding 2 seconds before letters finish falling
+    // Keep letters visible as they pile up on the loading card
+    // (Remove the opacity fade out so letters stay visible)
 
-    // Follow the letters as they fall - animate the viewport using scroll
+    // Follow the letters as they fall - animate the viewport using scroll (start immediately with letters)
     tl.to(window, {
       scrollTo: { y: window.innerHeight * 0.8 },
       duration: 3,
       ease: "power2.inOut"
-    }, 0.5);
+    }, 0); // Start at the same time as the letters begin falling
 
     // Fade in the second component as camera scrolls down - overlap with letter disappearing
     tl.call(() => {
@@ -153,27 +165,53 @@ export default function Home() {
           duration: 0.6,
           ease: "power2.out",
           onComplete: () => {
-            // Lower z-index after fade out to prevent interference
-            gsap.set("#loading-card", { zIndex: 5 });
+            // Lower z-index and hide the loading card after fade out
+            gsap.set("#loading-card", { zIndex: 5, display: "none" });
           }
         });
         
-        // Set initial positions for cards (all move to center behind loading card)
+        // Set initial state for individual feature cards (stacked behind loading card at same position)
         const cards = document.querySelectorAll(".feature-card");
-        gsap.set(cards[0], { x: "50%", y: "100%" }); // Top Left moves from center-right-down
-        gsap.set(cards[1], { x: "-50%", y: "100%" }); // Top Right moves from center-left-down  
-        gsap.set(cards[2], { x: "50%", y: "-100%" }); // Bottom Left moves from center-right-up
-        gsap.set(cards[3], { x: "-50%", y: "-100%" }); // Bottom Right moves from center-left-up
+        cards.forEach((card, index) => {
+          gsap.set(card, { 
+            opacity: 0,
+            x: "0px", // Start at center position (same as loading card)
+            y: "0px", // Start at center position (same as loading card)
+            zIndex: 15 - index // Cards have z-index 15, 14, 13, 12 (loading card is z-20)
+          });
+        });
         
-        // Animate all feature cards simultaneously back to their natural grid positions
+        // Keep the fallen letters in their position - no dispersal animation
+        // Letters remain piled where they fell on the loading card
+        
+        // First, make cards visible as loading card fades
         gsap.to(cards, {
           opacity: 1,
-          x: "0%",
-          y: "0%",
-          duration: 1.5,
-          ease: "back.out(1.7)",
-          delay: 0.3
+          duration: 0.6,
+          ease: "power2.out",
+          delay: 0.1, // Start slightly after loading card begins fading
+          stagger: 0.05
         });
+        
+        // Then animate cards from center to their final row positions (emerging from behind loading card)
+        setTimeout(() => {
+          const rowPositions = [
+            { x: "-450px", y: "0px" }, // Far left
+            { x: "-150px", y: "0px" }, // Center left
+            { x: "150px", y: "0px" },  // Center right
+            { x: "450px", y: "0px" }   // Far right
+          ];
+          
+          cards.forEach((card, index) => {
+            gsap.to(card, {
+              x: rowPositions[index].x,
+              y: rowPositions[index].y,
+              duration: 1.2,
+              ease: "back.out(1.4)",
+              delay: index * 0.1
+            });
+          });
+        }, 400); // Start earlier to overlap with loading card fade
       }, 700); // Wait 700 milliseconds after second component is visible
     }, [], "-=0.2");
 
@@ -206,7 +244,7 @@ export default function Home() {
           </p>
           {!isAnimated ? (
             <Button variant="default" className="cursor-pointer" onMouseDown={handleStartClick}>
-              Get Started
+              Explore
             </Button>
           ) : showReset ? (
             <Button variant="outline" className="cursor-pointer" onClick={resetPage}>
@@ -220,9 +258,9 @@ export default function Home() {
         <div className="flex flex-col items-center justify-center h-full w-full mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold mb-8 text-center">Why Choose MAYLNG?</h2>
           
-          <div className="relative w-full min-h-[400px]">
-            {/* Loading card - initially visible with higher z-index */}
-            <div id="loading-card" className="bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 mx-auto max-w-md relative z-20">
+          <div className="relative w-full min-h-[400px] flex items-center justify-center">
+            {/* Loading card - initially visible with higher z-index, positioned absolutely */}
+            <div id="loading-card" className="absolute bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 max-w-md z-20 left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
               <div className="flex items-center justify-center space-x-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                 <h3 className="text-xl font-semibold">Loading features...</h3>
@@ -233,39 +271,14 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Feature cards grid - proper CSS grid that animates from center */}
-            <div className="absolute top-0 left-0 right-0 z-10 grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-              {/* Feature 1 - Top Left */}
-              <div className="feature-card bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 opacity-0">
-                <h3 className="text-xl font-semibold mb-3">Better Email Client</h3>
-                <p className="text-gray-300">A superior email experience that surpasses Gmail with modern features designed for today&apos;s workflows.</p>
-              </div>
-              
-              {/* Feature 2 - Top Right */}
-              <div className="feature-card bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 opacity-0">
-                <h3 className="text-xl font-semibold mb-3">Agent Identities</h3>
-                <p className="text-gray-300">Create permanent or temporary identities for your AI agents, giving them the email presence they need.</p>
-              </div>
-              
-              {/* Feature 3 - Bottom Left */}
-              <div className="feature-card bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 opacity-0">
-                <h3 className="text-xl font-semibold mb-3">Developer SDKs</h3>
-                <p className="text-gray-300">Comprehensive SDKs to integrate MAYLNG with your favorite tools and platforms effortlessly.</p>
-              </div>
-              
-              {/* Feature 4 - Bottom Right */}
-              <div className="feature-card bg-white/5 backdrop-blur-sm rounded-lg p-6 border border-white/10 opacity-0">
-                <h3 className="text-xl font-semibold mb-3">Seamless Integration</h3>
-                <p className="text-gray-300">Simple and seamless integration process that gets you up and running in minutes, not hours.</p>
-              </div>
+            {/* Feature cards - individual cards stacked behind loading card, positioned absolutely */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Features enableAnimation={true} />
             </div>
           </div>
           
-          <div className="mt-12 text-center relative z-30">
-            <p className="text-lg text-gray-400 mb-6">Ready to revolutionize your email experience?</p>
-            <Button variant="default" className="px-8 py-3 text-lg">
-              Start Building
-            </Button>
+          <div className="mt-0 text-center relative z-30">
+            {/* Empty div for fallen letters to settle in */}
           </div>
         </div>
       </div>
