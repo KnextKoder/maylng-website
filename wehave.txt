@@ -1,0 +1,4 @@
+- a better email client than gmail
+- permanent or temporary identities for your agents
+- sdks to integrate with your favorite tools and platforms.
+- simple and seamless to integrate 
