@@ -10,7 +10,7 @@ const orbitron = Orbitron({
 
 export const metadata: Metadata = {
   title: "Maylng",
-  description: "Maylng—pronounced 'Mei Ling' or 'Mailing'—is an open source email client and service for your agents。",
+  description: "Maylng—pronounced 'Mei Ling' or 'Mailing'—is an open source email client and service for you and your agents。",
 };
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${orbitron.variable} antialiased`}
+        className={`${orbitron.variable} antialiased cursor-default`}
       >
         {children}
       </body>
